@@ -225,6 +225,7 @@ impl SecretKeys {
     pub const POLLINATIONS: &'static str = "api_key_pollinations";
     pub const VOLCENGINE_APP_ID: &'static str = "volcengine_app_id";
     pub const VOLCENGINE_ACCESS_KEY: &'static str = "volcengine_access_key";
+    pub const GITHUB_TOKEN: &'static str = "github_token";
 
     pub fn known_keys() -> &'static [&'static str] {
         &[
@@ -289,6 +290,7 @@ impl SecretKeys {
             Self::POLLINATIONS,
             Self::VOLCENGINE_APP_ID,
             Self::VOLCENGINE_ACCESS_KEY,
+            Self::GITHUB_TOKEN,
         ]
     }
 
@@ -340,6 +342,21 @@ mod tests {
         assert_eq!(
             secrets.read_secret("api_key_openai", None),
             Some("second".to_string())
+        );
+    }
+
+    #[test]
+    fn github_token_is_known_but_not_exportable() {
+        assert_eq!(super::SecretKeys::GITHUB_TOKEN, "github_token");
+        let known = super::SecretKeys::known_keys();
+        assert!(
+            known.contains(&super::SecretKeys::GITHUB_TOKEN),
+            "GITHUB_TOKEN must be in known_keys() so secret_state panel shows its fill status",
+        );
+        let exportable = super::SecretKeys::get_exportable_keys();
+        assert!(
+            !exportable.contains(&super::SecretKeys::GITHUB_TOKEN),
+            "GITHUB_TOKEN must NOT be in get_exportable_keys(); PAT exposure must stay minimal even if allow_keys_exposure is on",
         );
     }
 
