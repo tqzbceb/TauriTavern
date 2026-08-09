@@ -73,7 +73,7 @@ jobs:
           NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         with:
           mobile: android
-          args: --verbose --apk
+          args: --verbose --debug --apk
           uploadWorkflowArtifacts: true
 
       - name: Upload APK artifacts
