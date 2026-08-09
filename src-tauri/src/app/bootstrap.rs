@@ -206,7 +206,10 @@ pub(super) async fn build_services(
         repositories.world_info_repository.clone(),
     ));
 
-    let update_service = Arc::new(UpdateService::new(repositories.update_repository));
+    let update_service = Arc::new(UpdateService::new(
+        repositories.update_repository,
+        repositories.settings_repository.clone(),
+    ));
 
     let character_service = Arc::new(CharacterService::new(
         repositories.character_repository.clone(),
@@ -383,8 +386,10 @@ fn build_repositories(
         FileWorldInfoRepository::new(data_directory.default_user().join("worlds")),
     );
 
-    let update_repository: Arc<dyn UpdateRepository> =
-        Arc::new(GitHubUpdateRepository::new(http_client_pool.clone()));
+    let update_repository: Arc<dyn UpdateRepository> = Arc::new(GitHubUpdateRepository::new(
+        http_client_pool.clone(),
+        secret_repository.clone(),
+    ));
 
     Ok(AppRepositories {
         character_repository,
