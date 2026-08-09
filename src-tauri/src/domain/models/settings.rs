@@ -267,14 +267,38 @@ impl TauriTavernSettings {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TauriTavernUpdateSettings {
     pub startup_popup: StartupUpdatePopupSettings,
+    /// 启动时是否自动检查更新。默认 false = 装上不再匿名踩 GitHub 60/h。
+    #[serde(default = "default_startup_check_enabled")]
+    pub startup_check_enabled: bool,
+    /// 手动点「检查更新」时本地内存缓存的有效期(秒)。0 = 不缓存。默认 1800(30 分钟)。
+    #[serde(default = "default_manual_check_cache_ttl_secs")]
+    pub manual_check_cache_ttl_secs: u32,
+}
+
+impl Default for TauriTavernUpdateSettings {
+    fn default() -> Self {
+        Self {
+            startup_popup: StartupUpdatePopupSettings::default(),
+            startup_check_enabled: default_startup_check_enabled(),
+            manual_check_cache_ttl_secs: default_manual_check_cache_ttl_secs(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct StartupUpdatePopupSettings {
     pub dismissed_release_token: Option<String>,
+}
+
+fn default_startup_check_enabled() -> bool {
+    false
+}
+
+fn default_manual_check_cache_ttl_secs() -> u32 {
+    1800
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -326,5 +350,39 @@ mod tests {
         .expect("parse settings");
 
         assert!(settings.avatar_persona_original_images_enabled);
+    }
+
+    #[test]
+    fn update_settings_defaults_startup_check_disabled() {
+        let settings = super::TauriTavernUpdateSettings::default();
+        assert!(!settings.startup_check_enabled, "startup_check_enabled must default to false");
+        assert_eq!(
+            settings.manual_check_cache_ttl_secs, 1800,
+            "manual_check_cache_ttl_secs must default to 1800 (30 min)",
+        );
+    }
+
+    #[test]
+    fn update_settings_serde_round_trip_keeps_new_fields() {
+        let json = r#"{
+            "startup_popup": { "dismissed_release_token": "1.6.5->1.7.0" },
+            "startup_check_enabled": true,
+            "manual_check_cache_ttl_secs": 600
+        }"#;
+        let parsed: super::TauriTavernUpdateSettings = serde_json::from_str(json).unwrap();
+        assert!(parsed.startup_check_enabled);
+        assert_eq!(parsed.manual_check_cache_ttl_secs, 600);
+
+        let back = serde_json::to_string(&parsed).unwrap();
+        assert!(back.contains("\"startup_check_enabled\":true"));
+        assert!(back.contains("\"manual_check_cache_ttl_secs\":600"));
+    }
+
+    #[test]
+    fn update_settings_serde_missing_new_fields_uses_defaults() {
+        let json = r#"{ "startup_popup": { "dismissed_release_token": null } }"#;
+        let parsed: super::TauriTavernUpdateSettings = serde_json::from_str(json).unwrap();
+        assert!(!parsed.startup_check_enabled);
+        assert_eq!(parsed.manual_check_cache_ttl_secs, 1800);
     }
 }
