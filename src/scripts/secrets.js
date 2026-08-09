@@ -77,6 +77,7 @@ export const SECRET_KEYS = {
     POLLINATIONS: 'api_key_pollinations',
     VOLCENGINE_APP_ID: 'volcengine_app_id',
     VOLCENGINE_ACCESS_KEY: 'volcengine_access_key',
+    GITHUB_TOKEN: 'github_token',
 };
 
 const FRIENDLY_NAMES = {
