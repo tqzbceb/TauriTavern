@@ -17,6 +17,7 @@ import { githubRateLimitStopper } from '../../util/github-rate-limit-stopper.js'
 import { isIosRuntime } from '../../util/mobile-runtime.js';
 import { extractErrorText, toUserFacingErrorText } from '../../util/user-facing-error.js';
 import { getActiveIosPolicyCapabilities } from '../../tauritavern/ios-policy.js';
+import { writeSecret, SECRET_KEYS } from '../../../scripts/secrets.js';
 
 const MODULE_NAME = 'tauritavern-version';
 const LINKS = Object.freeze({
@@ -456,10 +457,19 @@ async function runStartupUpdateCheck() {
     }
 }
 
-eventSource.once(event_types.APP_READY, () => {
+eventSource.once(event_types.APP_READY, async () => {
     const updateCaps = resolveIosUpdateCapabilities();
     if (updateCaps && updateCaps.startup_check === false) {
         console.debug('Startup update check skipped: disabled by iOS policy');
+        return;
+    }
+
+    // 新 settings gate:用户在设置里关掉启动检查就跳过(默认 false = 不再匿名踩 GitHub 60/h)。
+    // 跟 iOS policy gate 并列,任一为 false 就跳过。
+    const settings = await getTauriTavernSettingsState();
+    const startupEnabled = settings?.updates?.startup_check_enabled ?? false;
+    if (!startupEnabled) {
+        console.debug('Startup update check skipped: disabled by user setting');
         return;
     }
 
@@ -512,4 +522,72 @@ jQuery(async () => {
     if (latestUpdateResult?.has_update && latestUpdateResult?.latest_release) {
         showUpdateResult(latestUpdateResult);
     }
+
+    // 初始化 startup checkbox 状态
+    try {
+        const settings = await getTauriTavernSettingsState();
+        $('#ttv-startup-check-enabled')
+            .prop('checked', settings?.updates?.startup_check_enabled ?? false);
+    } catch (error) {
+        console.warn('Failed to load startup_check_enabled setting:', error);
+    }
+
+    // startup checkbox onChange:patch 整个 updates 对象避免字段丢失
+    $('#ttv-startup-check-enabled').on('change', async (event) => {
+        try {
+            const settings = await getTauriTavernSettingsState();
+            tauriTavernSettingsCache = await updateTauriTavernSettings({
+                updates: {
+                    startup_popup: settings.updates.startup_popup,
+                    startup_check_enabled: event.target.checked,
+                    manual_check_cache_ttl_secs: settings.updates.manual_check_cache_ttl_secs,
+                },
+            });
+        } catch (error) {
+            console.error('Failed to persist startup_check_enabled:', error);
+            globalThis.toastr?.error?.(
+                localizeTemplate(
+                    'ttv_version.save_setting_failed',
+                    'Failed to save setting: ${0}',
+                    toUserFacingErrorText(error) || extractErrorText(error),
+                ),
+            );
+        }
+    });
+
+    // Save PAT onClick:writeSecret 会自动刷新后端 secret 缓存。
+    // value 空时 writeSecret 内部走 deleteSecret(清除 PAT),语义天然。
+    $('#ttv-save-token').on('click', async () => {
+        const $btn = $('#ttv-save-token');
+        const $input = $('#ttv-github-token');
+        const value = String($input.val() || '').trim();
+
+        $btn.prop('disabled', true);
+        try {
+            const result = await writeSecret(SECRET_KEYS.GITHUB_TOKEN, value, 'GitHub PAT');
+            if (result === null && value) {
+                globalThis.toastr?.error?.(
+                    localize('ttv_version.save_token_failed', 'Failed to save GitHub PAT.'),
+                );
+            } else {
+                $input.val('');
+                globalThis.toastr?.success?.(
+                    localize(
+                        'ttv_version.token_saved',
+                        value ? 'GitHub PAT saved.' : 'GitHub PAT cleared.',
+                    ),
+                );
+            }
+        } catch (error) {
+            globalThis.toastr?.error?.(
+                localizeTemplate(
+                    'ttv_version.save_token_failed',
+                    'Failed to save GitHub PAT: ${0}',
+                    toUserFacingErrorText(error) || extractErrorText(error),
+                ),
+            );
+        } finally {
+            $btn.prop('disabled', false);
+        }
+    });
 });
