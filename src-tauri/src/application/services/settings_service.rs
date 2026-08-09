@@ -41,6 +41,12 @@ impl SettingsService {
         if let Some(updates) = dto.updates {
             settings.updates.startup_popup.dismissed_release_token =
                 updates.startup_popup.dismissed_release_token;
+            if let Some(startup_check_enabled) = updates.startup_check_enabled {
+                settings.updates.startup_check_enabled = startup_check_enabled;
+            }
+            if let Some(manual_check_cache_ttl_secs) = updates.manual_check_cache_ttl_secs {
+                settings.updates.manual_check_cache_ttl_secs = manual_check_cache_ttl_secs;
+            }
         }
 
         if let Some(perf_profile) = dto.perf_profile {
@@ -261,5 +267,153 @@ impl SettingsService {
         self.settings_repository.restore_snapshot(name).await?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod update_patch_tests {
+    use super::*;
+    use crate::application::dto::settings_dto::{
+        StartupUpdatePopupSettingsDto, TauriTavernUpdateSettingsDto, UpdateTauriTavernSettingsDto,
+    };
+    use crate::domain::errors::DomainError;
+    use crate::domain::models::settings::{
+        SettingsSnapshot, TauriTavernSettings, UserSettings,
+    };
+    use crate::domain::repositories::settings_repository::SettingsRepository;
+    use async_trait::async_trait;
+    use std::sync::Mutex;
+
+    struct StubSettingsRepo {
+        saved: Mutex<Option<TauriTavernSettings>>,
+    }
+
+    #[async_trait]
+    impl SettingsRepository for StubSettingsRepo {
+        async fn save_tauritavern_settings(
+            &self,
+            settings: &TauriTavernSettings,
+        ) -> Result<(), DomainError> {
+            *self.saved.lock().unwrap() = Some(settings.clone());
+            Ok(())
+        }
+
+        async fn load_tauritavern_settings(&self) -> Result<TauriTavernSettings, DomainError> {
+            Ok(self
+                .saved
+                .lock()
+                .unwrap()
+                .clone()
+                .unwrap_or_default())
+        }
+
+        async fn save_user_settings(&self, _settings: &UserSettings) -> Result<(), DomainError> {
+            unreachable!("save_user_settings not used in this test")
+        }
+
+        async fn load_user_settings(&self) -> Result<UserSettings, DomainError> {
+            unreachable!("load_user_settings not used in this test")
+        }
+
+        async fn create_snapshot(&self) -> Result<(), DomainError> {
+            unreachable!("create_snapshot not used in this test")
+        }
+
+        async fn get_snapshots(&self) -> Result<Vec<SettingsSnapshot>, DomainError> {
+            unreachable!("get_snapshots not used in this test")
+        }
+
+        async fn load_snapshot(&self, _name: &str) -> Result<UserSettings, DomainError> {
+            unreachable!("load_snapshot not used in this test")
+        }
+
+        async fn restore_snapshot(&self, _name: &str) -> Result<(), DomainError> {
+            unreachable!("restore_snapshot not used in this test")
+        }
+
+        async fn get_themes(&self) -> Result<Vec<UserSettings>, DomainError> {
+            unreachable!("get_themes not used in this test")
+        }
+
+        async fn get_moving_ui_presets(&self) -> Result<Vec<UserSettings>, DomainError> {
+            unreachable!("get_moving_ui_presets not used in this test")
+        }
+
+        async fn get_quick_reply_presets(&self) -> Result<Vec<UserSettings>, DomainError> {
+            unreachable!("get_quick_reply_presets not used in this test")
+        }
+
+        async fn get_instruct_presets(&self) -> Result<Vec<UserSettings>, DomainError> {
+            unreachable!("get_instruct_presets not used in this test")
+        }
+
+        async fn get_context_presets(&self) -> Result<Vec<UserSettings>, DomainError> {
+            unreachable!("get_context_presets not used in this test")
+        }
+
+        async fn get_sysprompt_presets(&self) -> Result<Vec<UserSettings>, DomainError> {
+            unreachable!("get_sysprompt_presets not used in this test")
+        }
+
+        async fn get_reasoning_presets(&self) -> Result<Vec<UserSettings>, DomainError> {
+            unreachable!("get_reasoning_presets not used in this test")
+        }
+
+        async fn get_koboldai_settings(&self) -> Result<(Vec<String>, Vec<String>), DomainError> {
+            unreachable!("get_koboldai_settings not used in this test")
+        }
+
+        async fn get_novelai_settings(&self) -> Result<(Vec<String>, Vec<String>), DomainError> {
+            unreachable!("get_novelai_settings not used in this test")
+        }
+
+        async fn get_openai_settings(&self) -> Result<(Vec<String>, Vec<String>), DomainError> {
+            unreachable!("get_openai_settings not used in this test")
+        }
+
+        async fn get_textgen_settings(&self) -> Result<(Vec<String>, Vec<String>), DomainError> {
+            unreachable!("get_textgen_settings not used in this test")
+        }
+
+        async fn get_world_names(&self) -> Result<Vec<String>, DomainError> {
+            unreachable!("get_world_names not used in this test")
+        }
+    }
+
+    #[tokio::test]
+    async fn patch_transparently_propagates_new_update_fields() {
+        let repo = std::sync::Arc::new(StubSettingsRepo {
+            saved: Mutex::new(None),
+        });
+        let service = SettingsService::new(repo.clone());
+
+        let dto = UpdateTauriTavernSettingsDto {
+            updates: Some(TauriTavernUpdateSettingsDto {
+                startup_popup: StartupUpdatePopupSettingsDto {
+                    dismissed_release_token: None,
+                },
+                startup_check_enabled: Some(true),
+                manual_check_cache_ttl_secs: Some(600),
+            }),
+            perf_profile: None,
+            panel_runtime_profile: None,
+            embedded_runtime_profile: None,
+            chat_history_mode: None,
+            close_to_tray_on_close: None,
+            request_proxy: None,
+            allow_keys_exposure: None,
+            avatar_persona_original_images_enabled: None,
+            dev: None,
+            dynamic_theme: None,
+            models: None,
+        };
+
+        let out = service.update_tauritavern_settings(dto).await.unwrap();
+        assert_eq!(out.updates.startup_check_enabled, Some(true));
+        assert_eq!(out.updates.manual_check_cache_ttl_secs, Some(600));
+
+        let persisted = repo.saved.lock().unwrap().clone().unwrap();
+        assert!(persisted.updates.startup_check_enabled);
+        assert_eq!(persisted.updates.manual_check_cache_ttl_secs, 600);
     }
 }
