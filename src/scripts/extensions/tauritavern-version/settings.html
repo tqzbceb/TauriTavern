@@ -43,6 +43,26 @@
                 </button>
             </div>
 
+            <div class="ttv-update-options">
+                <label class="checkbox">
+                    <input type="checkbox" id="ttv-startup-check-enabled">
+                    <span data-i18n="ttv_version.startup_check">启动时自动检查更新</span>
+                </label>
+                <div class="ttv-pat-block">
+                    <span class="ttv-label" data-i18n="ttv_version.github_pat">GitHub PAT</span>
+                    <div class="ttv-pat-row">
+                        <input type="password" id="ttv-github-token" placeholder="ghp_..." autocomplete="off">
+                        <button id="ttv-save-token" type="button" class="menu_button menu_button_icon">
+                            <i class="fa-solid fa-floppy-disk"></i>
+                            <span data-i18n="ttv_version.save">保存</span>
+                        </button>
+                    </div>
+                    <small data-i18n="ttv_version.github_pat_hint">
+                        没填则匿名调用 (60次/小时);填了走认证 (5000次/小时)。
+                    </small>
+                </div>
+            </div>
+
             <div id="tauritavern_update_result" class="ttv-update-result">
                 <div class="ttv-update-header">
                     <div class="ttv-update-title">
