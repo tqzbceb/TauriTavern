@@ -66,6 +66,27 @@ jobs:
       - name: Build frontend assets
         run: pnpm run web:build
 
+      # v1.6.5 evaluates the release signing block even for a debug build.
+      # This temporary keystore is only a Gradle configuration stub; --debug
+      # still produces the normal debug-signed APK.
+      - name: Provide temporary Gradle signing properties
+        shell: bash
+        run: |
+          keytool -genkeypair \
+            -keystore "$RUNNER_TEMP/tauritavern-ci-debug.jks" \
+            -storepass changeit \
+            -keypass changeit \
+            -alias tauritavern-ci \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 1 \
+            -dname "CN=TauriTavern CI, OU=Build, O=TauriTavern, C=US"
+          cat > src-tauri/gen/android/keystore.properties <<EOF
+          keyAlias=tauritavern-ci
+          password=changeit
+          storeFile=$RUNNER_TEMP/tauritavern-ci-debug.jks
+          EOF
+
       - name: Build and collect mobile artifacts
         uses: tauri-apps/tauri-action@97cef2bd32ead607bcc2c6af5b40ce2f25d48e77
         env:
