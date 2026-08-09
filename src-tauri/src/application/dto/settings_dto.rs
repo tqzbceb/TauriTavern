@@ -25,6 +25,10 @@ pub struct TauriTavernSettingsDto {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TauriTavernUpdateSettingsDto {
     pub startup_popup: StartupUpdatePopupSettingsDto,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub startup_check_enabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub manual_check_cache_ttl_secs: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -242,6 +246,8 @@ impl From<TauriTavernUpdateSettings> for TauriTavernUpdateSettingsDto {
     fn from(settings: TauriTavernUpdateSettings) -> Self {
         Self {
             startup_popup: StartupUpdatePopupSettingsDto::from(settings.startup_popup),
+            startup_check_enabled: Some(settings.startup_check_enabled),
+            manual_check_cache_ttl_secs: Some(settings.manual_check_cache_ttl_secs),
         }
     }
 }
@@ -251,5 +257,49 @@ impl From<StartupUpdatePopupSettings> for StartupUpdatePopupSettingsDto {
         Self {
             dismissed_release_token: settings.dismissed_release_token,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::models::settings::TauriTavernSettings;
+
+    #[test]
+    fn dto_round_trips_new_update_fields() {
+        let mut settings = TauriTavernSettings::default();
+        settings.updates.startup_check_enabled = true;
+        settings.updates.manual_check_cache_ttl_secs = 600;
+
+        let dto: TauriTavernSettingsDto = settings.into();
+
+        assert_eq!(dto.updates.startup_check_enabled, Some(true));
+        assert_eq!(dto.updates.manual_check_cache_ttl_secs, Some(600));
+
+        // Reverse: UpdateTauriTavernSettingsDto -> patch values -> domain
+        let patch = UpdateTauriTavernSettingsDto {
+            updates: Some(TauriTavernUpdateSettingsDto {
+                startup_popup: StartupUpdatePopupSettingsDto {
+                    dismissed_release_token: None,
+                },
+                startup_check_enabled: Some(false),
+                manual_check_cache_ttl_secs: Some(1800),
+            }),
+            perf_profile: None,
+            panel_runtime_profile: None,
+            embedded_runtime_profile: None,
+            chat_history_mode: None,
+            close_to_tray_on_close: None,
+            request_proxy: None,
+            allow_keys_exposure: None,
+            avatar_persona_original_images_enabled: None,
+            dev: None,
+            dynamic_theme: None,
+            models: None,
+        };
+
+        let json = serde_json::to_string(&patch).unwrap();
+        assert!(json.contains("\"startup_check_enabled\":false"));
+        assert!(json.contains("\"manual_check_cache_ttl_secs\":1800"));
     }
 }
