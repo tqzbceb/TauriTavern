@@ -94,6 +94,9 @@ jobs:
         shell: bash
         run: rm -rf src-tauri/gen/android
 
+      - name: Initialize Android project for dev identifier
+        run: pnpm tauri android init
+
       - name: Build and collect mobile artifacts
         uses: tauri-apps/tauri-action@97cef2bd32ead607bcc2c6af5b40ce2f25d48e77
         env:
