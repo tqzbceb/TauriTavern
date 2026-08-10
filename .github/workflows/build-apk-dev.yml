@@ -72,6 +72,7 @@ jobs:
       - name: Provide temporary Gradle signing properties
         shell: bash
         run: |
+          rm -rf src-tauri/gen/android
           keytool -genkeypair \
             -keystore "$RUNNER_TEMP/tauritavern-ci-debug.jks" \
             -storepass changeit \
@@ -81,11 +82,13 @@ jobs:
             -keysize 2048 \
             -validity 1 \
             -dname "CN=TauriTavern CI, OU=Build, O=TauriTavern, C=US"
+          mkdir -p src-tauri/gen/android
           cat > src-tauri/gen/android/keystore.properties <<EOF
           keyAlias=tauritavern-ci
           password=changeit
           storeFile=$RUNNER_TEMP/tauritavern-ci-debug.jks
           EOF
+
 
       - name: Build and collect mobile artifacts
         uses: tauri-apps/tauri-action@97cef2bd32ead607bcc2c6af5b40ce2f25d48e77
