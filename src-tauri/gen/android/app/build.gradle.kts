@@ -20,7 +20,7 @@ android {
     namespace = "com.tauritavern.client"
     defaultConfig {
         manifestPlaceholders["usesCleartextTraffic"] = "false"
-        applicationId = "com.tauritavern.client"
+        applicationId = "com.tauritavern.client.dev"
         minSdk = 24
         targetSdk = 36
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()

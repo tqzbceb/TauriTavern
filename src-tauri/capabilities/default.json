@@ -23,8 +23,8 @@
     {
       "identifier": "fs:scope",
       "allow": [
-        "/storage/emulated/0/Android/data/com.tauritavern.client/**",
-        "/sdcard/Android/data/com.tauritavern.client/**"
+        "/storage/emulated/0/Android/data/com.tauritavern.client.dev/**",
+        "/sdcard/Android/data/com.tauritavern.client.dev/**"
       ]
     },
     {
