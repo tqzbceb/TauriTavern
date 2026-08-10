@@ -90,6 +90,10 @@ jobs:
           EOF
 
 
+      - name: Reset generated Android project for new identifier
+        shell: bash
+        run: rm -rf src-tauri/gen/android
+
       - name: Build and collect mobile artifacts
         uses: tauri-apps/tauri-action@97cef2bd32ead607bcc2c6af5b40ce2f25d48e77
         env:
@@ -99,6 +103,7 @@ jobs:
           mobile: android
           args: --verbose --debug --apk
           uploadWorkflowArtifacts: true
+
 
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
